@@ -1,5 +1,6 @@
 use anyhow::Context as _;
 use clap::Parser;
+use image::imageops::FilterType;
 use image::ImageReader;
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelIterator;
@@ -88,6 +89,10 @@ fn convert(input: impl AsRef<Path>, output: impl AsRef<Path>) -> anyhow::Result<
     let img = ImageReader::new(Cursor::new(&content))
         .with_guessed_format()?
         .decode()?;
+
+    let scale = img.width() as f32 / 720f32;
+    let new_height = img.height() as f32 * scale;
+    let img = img.resize(720u32, new_height as u32, FilterType::Lanczos3);
     img.save(output)?;
     Ok(())
 }
