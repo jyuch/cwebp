@@ -1,8 +1,8 @@
 use clap::Parser;
 use image::imageops::FilterType;
-use image::{GenericImageView, ImageReader};
-use rayon::iter::ParallelIterator;
-use rayon::prelude::IntoParallelIterator;
+use image::{ColorType, DynamicImage, GenericImageView, ImageReader};
+//use rayon::iter::ParallelIterator;
+//use rayon::prelude::IntoParallelIterator;
 use std::fs;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -26,6 +26,10 @@ struct Cli {
     /// Image height
     #[clap(short, long)]
     height: Option<u32>,
+
+    /// Image extension
+    #[clap(short, long, default_value = "avif")]
+    ext: String,
 }
 
 #[derive(Debug)]
@@ -48,7 +52,7 @@ fn main() -> anyhow::Result<()> {
         .filter_map(|entry| entry.ok())
         .map(|e| e.path().to_path_buf())
         .filter(|path| is_image(path))
-        .map(|input| to_item(input, &opt.input, &opt.output))
+        .map(|input| to_item(input, &opt.input, &opt.output, &opt.ext))
         .filter_map(|item| item.ok())
         .filter(|item| !item.output.exists())
         .collect::<Vec<_>>();
@@ -62,7 +66,7 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    ci.into_par_iter()
+    ci.into_iter()
         .map(|it| {
             let result = convert(&it.input, &it.output, opt.width, opt.height);
             (it, result)
@@ -86,11 +90,12 @@ fn to_item(
     input: impl AsRef<Path>,
     input_prefix: impl AsRef<Path>,
     output_prefix: impl AsRef<Path>,
+    output_extension: &str,
 ) -> anyhow::Result<ConvertItem> {
     let output = output_prefix
         .as_ref()
         .join(input.as_ref().strip_prefix(input_prefix)?)
-        .with_extension("webp");
+        .with_extension(output_extension);
     Ok(ConvertItem::new(
         input.as_ref().to_path_buf(),
         output.to_path_buf(),
@@ -112,6 +117,20 @@ fn convert(
     let new_width = width.unwrap_or(cur_width);
     let new_height = height.unwrap_or(cur_height);
     let img = img.resize(new_width, new_height, FilterType::Lanczos3);
+
+    let img: DynamicImage = match img.color() {
+        ColorType::L8 | ColorType::La8 | ColorType::L16 | ColorType::La16 => {
+            DynamicImage::from(img.into_luma8())
+        }
+        ColorType::Rgb8
+        | ColorType::Rgba8
+        | ColorType::Rgb16
+        | ColorType::Rgba16
+        | ColorType::Rgb32F
+        | ColorType::Rgba32F => DynamicImage::from(img.into_rgb8()),
+        _ => unreachable!(),
+    };
+
     img.save(output)?;
     Ok(())
 }
