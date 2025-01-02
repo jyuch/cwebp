@@ -46,7 +46,11 @@ fn main() -> anyhow::Result<()> {
 
     // 先に出力先のフォルダは全部作っておく
     for it in &ci {
-        fs::create_dir_all(it.output.parent().context("No parent")?)?
+        if let Some(parent) = it.output.parent() {
+            if !parent.exists() {
+                fs::create_dir_all(parent)?;
+            }
+        }
     }
 
     ci.into_par_iter()
