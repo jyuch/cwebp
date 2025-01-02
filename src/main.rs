@@ -11,10 +11,10 @@ use walkdir::WalkDir;
 
 #[derive(Parser, Debug)]
 struct Cli {
-    /// Input.
+    /// Input directory.
     #[clap(short, long)]
     input: PathBuf,
-    /// Output.
+    /// Output directory.
     #[clap(short, long)]
     output: PathBuf,
 }
