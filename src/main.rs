@@ -30,6 +30,10 @@ struct Cli {
     /// Image extension
     #[clap(short, long, default_value = "avif")]
     ext: String,
+
+    /// Print help.
+    #[clap(long, action = clap::ArgAction::HelpLong)]
+    help: Option<bool>,
 }
 
 #[derive(Debug)]
