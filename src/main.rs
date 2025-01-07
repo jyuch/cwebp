@@ -1,6 +1,7 @@
 use clap::Parser;
 use image::imageops::FilterType;
 use image::{ColorType, DynamicImage, GenericImageView, ImageReader};
+use indicatif::{ProgressBar, ProgressStyle};
 use std::fs;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -68,16 +69,24 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    ci.into_iter()
-        .map(|it| {
-            let result = convert(&it.input, &it.output, opt.width, opt.height);
-            (it, result)
-        })
-        .for_each(|it| {
-            if let Err(e) = &it.1 {
-                eprintln!("{} {}", &it.0.input.display(), e);
-            }
-        });
+    let total = ci.len();
+    let pb = ProgressBar::new(total as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})",
+            )?
+            .progress_chars("#>-"),
+    );
+
+    for it in &ci {
+        let result = convert(&it.input, &it.output, opt.width, opt.height);
+        if let Err(e) = result {
+            eprintln!("{} {}", &it.input.display(), e);
+        }
+        pb.inc(1);
+    }
+
     Ok(())
 }
 
