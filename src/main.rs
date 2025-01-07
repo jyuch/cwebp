@@ -1,8 +1,6 @@
 use clap::Parser;
 use image::imageops::FilterType;
 use image::{ColorType, DynamicImage, GenericImageView, ImageReader};
-//use rayon::iter::ParallelIterator;
-//use rayon::prelude::IntoParallelIterator;
 use std::fs;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};

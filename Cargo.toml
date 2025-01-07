@@ -8,7 +8,6 @@ anyhow = { version = "1", features = ["backtrace", "std"] }
 clap = { version = "4", features = ["derive"] }
 image = { version = "0.25", features = ["webp"] }
 walkdir = "2"
-rayon = "1"
 
 [profile.release]
 codegen-units = 1
