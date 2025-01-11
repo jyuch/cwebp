@@ -1,6 +1,8 @@
+mod monochrome;
+
 use clap::Parser;
 use image::imageops::FilterType;
-use image::{ColorType, DynamicImage, GenericImageView, ImageReader};
+use image::{DynamicImage, GenericImageView, ImageReader};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fs;
 use std::io::Cursor;
@@ -33,6 +35,10 @@ struct Cli {
     /// Force monochrome.
     #[clap(long, default_value_t = false)]
     force_monochrome: bool,
+
+    /// Aggressive optimization.
+    #[clap(long, default_value_t = false)]
+    aggressive_optimization: bool,
 
     /// Print help.
     #[clap(long, action = clap::ArgAction::HelpLong)]
@@ -90,6 +96,7 @@ fn main() -> anyhow::Result<()> {
             opt.width,
             opt.height,
             opt.force_monochrome,
+            opt.aggressive_optimization,
         );
         if let Err(e) = result {
             eprintln!("{} {}", &it.input.display(), e);
@@ -129,6 +136,7 @@ fn convert(
     width: Option<u32>,
     height: Option<u32>,
     force_monochrome: bool,
+    aggressive_optimization: bool,
 ) -> anyhow::Result<()> {
     let content = fs::read(&input)?;
     let img = ImageReader::new(Cursor::new(&content))
@@ -140,21 +148,24 @@ fn convert(
     let new_height = height.unwrap_or(cur_height);
     let img = img.resize(new_width, new_height, FilterType::Lanczos3);
 
-    let img = if force_monochrome {
+    let is_color_profile = monochrome::is_color_profile(&img);
+
+    let img = if force_monochrome || !is_color_profile {
+        // 強制モノクロ化オプションが指定されているか、オリジナルイメージがモノクロプロファイル
         DynamicImage::from(img.into_luma8())
-    } else {
-        match img.color() {
-            ColorType::L8 | ColorType::La8 | ColorType::L16 | ColorType::La16 => {
-                DynamicImage::from(img.into_luma8())
-            }
-            ColorType::Rgb8
-            | ColorType::Rgba8
-            | ColorType::Rgb16
-            | ColorType::Rgba16
-            | ColorType::Rgb32F
-            | ColorType::Rgba32F => DynamicImage::from(img.into_rgb8()),
-            _ => unreachable!(),
+    } else if aggressive_optimization {
+        // 積極的な最適化が指定されている
+        let color_pixel_ratio = monochrome::color_pixel_ratio(&img, 0.1);
+
+        if color_pixel_ratio > 0f64 {
+            // カラーピクセルを含んでいる
+            DynamicImage::from(img.into_rgb8())
+        } else {
+            // カラーピクセルを含まない
+            DynamicImage::from(img.into_luma8())
         }
+    } else {
+        DynamicImage::from(img.into_rgb8())
     };
 
     img.save(output)?;
