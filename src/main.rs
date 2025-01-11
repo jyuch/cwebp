@@ -22,13 +22,17 @@ struct Cli {
     #[clap(short, long)]
     width: Option<u32>,
 
-    /// Image height
+    /// Image height.
     #[clap(short, long)]
     height: Option<u32>,
 
-    /// Image extension
+    /// Image extension.
     #[clap(short, long, default_value = "avif")]
     ext: String,
+
+    /// Force monochrome.
+    #[clap(long, default_value_t = false)]
+    force_monochrome: bool,
 
     /// Print help.
     #[clap(long, action = clap::ArgAction::HelpLong)]
@@ -80,7 +84,13 @@ fn main() -> anyhow::Result<()> {
     );
 
     for it in &ci {
-        let result = convert(&it.input, &it.output, opt.width, opt.height);
+        let result = convert(
+            &it.input,
+            &it.output,
+            opt.width,
+            opt.height,
+            opt.force_monochrome,
+        );
         if let Err(e) = result {
             eprintln!("{} {}", &it.input.display(), e);
         }
@@ -118,6 +128,7 @@ fn convert(
     output: impl AsRef<Path>,
     width: Option<u32>,
     height: Option<u32>,
+    force_monochrome: bool,
 ) -> anyhow::Result<()> {
     let content = fs::read(&input)?;
     let img = ImageReader::new(Cursor::new(&content))
@@ -129,17 +140,21 @@ fn convert(
     let new_height = height.unwrap_or(cur_height);
     let img = img.resize(new_width, new_height, FilterType::Lanczos3);
 
-    let img: DynamicImage = match img.color() {
-        ColorType::L8 | ColorType::La8 | ColorType::L16 | ColorType::La16 => {
-            DynamicImage::from(img.into_luma8())
+    let img = if force_monochrome {
+        DynamicImage::from(img.into_luma8())
+    } else {
+        match img.color() {
+            ColorType::L8 | ColorType::La8 | ColorType::L16 | ColorType::La16 => {
+                DynamicImage::from(img.into_luma8())
+            }
+            ColorType::Rgb8
+            | ColorType::Rgba8
+            | ColorType::Rgb16
+            | ColorType::Rgba16
+            | ColorType::Rgb32F
+            | ColorType::Rgba32F => DynamicImage::from(img.into_rgb8()),
+            _ => unreachable!(),
         }
-        ColorType::Rgb8
-        | ColorType::Rgba8
-        | ColorType::Rgb16
-        | ColorType::Rgba16
-        | ColorType::Rgb32F
-        | ColorType::Rgba32F => DynamicImage::from(img.into_rgb8()),
-        _ => unreachable!(),
     };
 
     img.save(output)?;
