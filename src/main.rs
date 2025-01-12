@@ -89,6 +89,8 @@ fn main() -> anyhow::Result<()> {
             .progress_chars("#>-"),
     );
 
+    let mut failed_item = vec![];
+
     for it in &ci {
         let result = convert(
             &it.input,
@@ -99,9 +101,18 @@ fn main() -> anyhow::Result<()> {
             opt.aggressive_optimization,
         );
         if let Err(e) = result {
-            eprintln!("{} {}", &it.input.display(), e);
+            let item = &it
+                .input
+                .strip_prefix(&opt.input)
+                .map(|it| it.display())
+                .unwrap_or(it.input.display());
+            failed_item.push(format!("{}: {}", item, e));
         }
         pb.inc(1);
+    }
+
+    for it in &failed_item {
+        eprintln!("{}", it);
     }
 
     Ok(())
