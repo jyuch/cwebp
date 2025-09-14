@@ -10,6 +10,10 @@ image = { version = "0.25", features = ["webp"] }
 walkdir = "2"
 indicatif = "0.17"
 
+# Windows‑specific dependency with required feature
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.56", features = ["Win32_System_Threading"] }
+
 [profile.release]
 codegen-units = 1
 lto = true

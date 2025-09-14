@@ -43,6 +43,9 @@ cwebp -i ./pics -o ./out --ext png --force-monochrome
 
 # カラープロファイル判定と積極的最適化を有効にして変換
 cwebp -i ./src_images -o ./dst_images --aggressive-optimization
+
+# 低優先度で実行（Windows のみ）
+cwebp -i ./photos -o ./converted --low-priority
 ```
 
 ## オプション一覧（`--help` で確認可）
@@ -56,4 +59,5 @@ cwebp -i ./src_images -o ./dst_images --aggressive-optimization
 | `-e, --ext <STRING>` | 出力拡張子（デフォルト: `avif`） |
 | `--force-monochrome` | 全画像をモノクロ化 |
 | `--aggressive-optimization` | カラープロファイル判定と色ピクセル比に基づく最適化 |
+| `--low-priority`            | Windows のみ有効。プロセス優先度を BELOW_NORMAL に設定し、システム負荷を軽減します。 |
 | `--help` | ヘルプ情報表示 |

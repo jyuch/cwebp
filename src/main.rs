@@ -8,6 +8,8 @@ use std::fs;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+mod priority;
+use crate::priority::set_low_priority;
 
 #[derive(Parser, Debug)]
 #[clap(disable_help_flag = true)]
@@ -40,6 +42,10 @@ struct Cli {
     #[clap(long, default_value_t = false)]
     aggressive_optimization: bool,
 
+    /// Low priority execution (Windows only)
+    #[clap(long)]
+    low_priority: bool,
+
     /// Print help.
     #[clap(long, action = clap::ArgAction::HelpLong)]
     help: Option<bool>,
@@ -60,6 +66,10 @@ impl ConvertItem {
 fn main() -> anyhow::Result<()> {
     let opt = Cli::parse();
 
+    if opt.low_priority {
+        set_low_priority();
+    }
+
     let ci = WalkDir::new(&opt.input)
         .into_iter()
         .filter_map(|entry| entry.ok())
@@ -72,10 +82,10 @@ fn main() -> anyhow::Result<()> {
 
     // 先に出力先のフォルダは全部作っておく
     for it in &ci {
-        if let Some(parent) = it.output.parent() {
-            if !parent.exists() {
-                fs::create_dir_all(parent)?;
-            }
+        if let Some(parent) = it.output.parent()
+            && !parent.exists()
+        {
+            fs::create_dir_all(parent)?;
         }
     }
 
